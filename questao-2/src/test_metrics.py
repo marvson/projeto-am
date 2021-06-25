@@ -194,32 +194,36 @@ def test_ttests_one_tailed():
 
 
 def test_return_of_ttest_greater(snapshot):
+    snapshot.snapshot_dir = "snapshots"
     # Snapshot testing of the return of this function
     s1 = Statistic(30, 10, 2)
     s2 = Statistic(30, 8, 1)
     result = jsonpickle.encode(ttest_greater(s1, s2))
-    snapshot.assert_match(json.dumps(result), "result.txt")
+    snapshot.assert_match(json.dumps(result), "ttest_greater.txt")
 
 
 def test_return_of_ttest_less(snapshot):
+    snapshot.snapshot_dir = "snapshots"
     # Snapshot testing of the return of this function
     s1 = Statistic(30, 10, 2)
     s2 = Statistic(30, 8, 1)
     result = jsonpickle.encode(ttest_less(s1, s2))
-    snapshot.assert_match(json.dumps(result), "result.txt")
+    snapshot.assert_match(json.dumps(result), "ttest_less.txt")
 
 
 def test_return_of_ttest_equal(snapshot):
+    snapshot.snapshot_dir = "snapshots"
     # Snapshot testing of the return of this function
     s1 = Statistic(30, 10, 2)
     s2 = Statistic(30, 8, 1)
     result = jsonpickle.encode(ttest_equal(s1, s2))
-    snapshot.assert_match(json.dumps(result), "result.txt")
+    snapshot.assert_match(json.dumps(result), "ttest_equal.txt")
 
 
 def test_return_of_compute_metrics(snapshot):
+    snapshot.snapshot_dir = "snapshots"
     # Snapshot testing of the return of this function
     s1 = [1, 2, 3, 3]
     s2 = [[2, 3, 3, 2], [2, 2, 3, 3], [3, 3, 3, 3]]
     result = jsonpickle.encode(compute_metrics(s1, s2))
-    snapshot.assert_match(json.dumps(result), "result.txt")
+    snapshot.assert_match(json.dumps(result), "compute_metrics.txt")
