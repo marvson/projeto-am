@@ -13,7 +13,7 @@ from sklearn.metrics import (
 
 
 @dataclass
-class SampleMean:
+class Statistic:
     """Holds statistical metrics about a sample of a population.
 
     It holds the sample size, mean value and standard deviation. These values
@@ -34,20 +34,20 @@ class SampleMean:
     confidence_interval(alpha=0.95)
         Returns the confidence interval of the sample mean.
     from_observations(observations)
-        Creates a new SampleMean from a list of observations.
+        Creates a new Statistic from a list of observations.
 
     Examples
     --------
-    >>> SampleMean.from_observations([1, 3, 1, 3, 2, 2, 2, 1.5, 6]) < SampleMean.from_observations([1, 14, 0.2, 20, 3.4, 15, 12, 1.5, 5])
+    >>> Statistic.from_observations([1, 3, 1, 3, 2, 2, 2, 1.5, 6]) < Statistic.from_observations([1, 14, 0.2, 20, 3.4, 15, 12, 1.5, 5])
     False
 
-    >>> SampleMean.from_observations([1, 3, 1, 3, 2, 2, 2, 1.5, 6])
+    >>> Statistic.from_observations([1, 3, 1, 3, 2, 2, 2, 1.5, 6])
     1.21 <= X <= 3.57
 
-    >>> SampleMean(sample_size=30, mean=2, std=10).confidence_interval(0.95)
+    >>> Statistic(sample_size=30, mean=2, std=10).confidence_interval(0.95)
     (-22.542755705592434, 26.542755705592434)
 
-    >>> SampleMean.from_observations([1, 3, 1, 3, 2, 2, 2, 1.5, 6]).mean
+    >>> Statistic.from_observations([1, 3, 1, 3, 2, 2, 2, 1.5, 6]).mean
     2.388888888888889
 
     """
@@ -58,65 +58,28 @@ class SampleMean:
 
     @classmethod
     def from_observations(cls, observations: list[float]):
-        return cls(len(observations), np.mean(observations), np.std(observations))
-
-    def __repr__(self):
-        min_trust, max_trust = self.confidence_interval()
-        return f"""
-        Confidence interval:
-        {min_trust:.2f} <= X <= {max_trust:.2f}
-        
-        Mean: {self.mean}
-        Std: {self.std}
-        Sample Size: {self.sample_size}
-        """
-
-    def __gt__(self, other):
-        p_value = ttest_ind_from_stats(
-            self.mean,
-            self.std,
-            self.sample_size,
-            other.mean,
-            other.std,
-            other.sample_size,
-            alternative="greater",
-        )[1]
-        return p_value > 0.05
-
-    def __lt__(self, other):
-        p_value = ttest_ind_from_stats(
-            self.mean,
-            self.std,
-            self.sample_size,
-            other.mean,
-            other.std,
-            other.sample_size,
-            alternative="less",
-        )[1]
-        return p_value > 0.05
-
-    def __eq__(self, other):
-        p_value = ttest_ind_from_stats(
-            self.mean,
-            self.std,
-            self.sample_size,
-            other.mean,
-            other.std,
-            other.sample_size,
-            alternative="two-sided",
-        )[1]
-        return p_value > 0.05
-
-    def confidence_interval(self, alpha: float = 0.95):
-        return t.interval(
-            alpha=alpha,
-            df=self.sample_size - 1,
-            loc=self.mean,
-            scale=self.std / np.sqrt(self.sample_size - 1),
+        return cls(
+            len(observations), np.mean(observations), np.std(observations, ddof=1)
         )
 
+    def __repr__(self):
+        min_conf, max_conf = self.confidence_interval()
+        interval = (max_conf - min_conf) / 2
+        return f"{self.mean:.2f} +- {interval/2:.2f}"
 
-def ttest(s1: SampleMean, s2: SampleMean, alternative: str):
+    def confidence_interval(self, alpha: float = 0.95):
+        if self.std:
+            return t.interval(
+                alpha=alpha,
+                df=self.sample_size - 1,
+                loc=self.mean,
+                scale=self.std / np.sqrt(self.sample_size - 1),
+            )
+        else:
+            return self.mean, self.mean
+
+
+def ttest(s1: Statistic, s2: Statistic, alternative: str):
     """Does a t test of the two sample populations.
 
     Assuming dependent samples, which means, samples from the same classifier
@@ -127,9 +90,9 @@ def ttest(s1: SampleMean, s2: SampleMean, alternative: str):
 
     Parameters
     ----------
-    s1 : SampleMean
+    s1 : Statistic
         First population sample mean value.
-    s2 : SampleMean
+    s2 : Statistic
         Second population sample mean value.
     alternative : str
         Can be "less" if the alternative hypothesis is that mu(s1) < mu(s2),
@@ -148,11 +111,11 @@ def ttest(s1: SampleMean, s2: SampleMean, alternative: str):
         s2.mean,
         s2.std,
         s2.sample_size,
-        alternative,
+        alternative=alternative,
     )
 
 
-def ttest_greater(s1: SampleMean, s2: SampleMean, alpha: float = 0.05):
+def ttest_greater(s1: Statistic, s2: Statistic, alpha: float = 0.05):
     """Tests the hypothesis that s1 > s2.
 
     Does a hypothesis test (t-test) with the two samples. The null hypothesis
@@ -162,9 +125,9 @@ def ttest_greater(s1: SampleMean, s2: SampleMean, alpha: float = 0.05):
 
     Parameters
     ----------
-    s1 : SampleMean
+    s1 : Statistic
         First population sample mean value.
-    s2 : SampleMean
+    s2 : Statistic
         Second population sample mean value.
     alpha : float, optional
         The confidence value, by default 0.05
@@ -172,15 +135,17 @@ def ttest_greater(s1: SampleMean, s2: SampleMean, alpha: float = 0.05):
     t_value, p_value = ttest(s1, s2, "greater")
     return {
         "alpha": alpha,
-        "H0": f"{s1.mean} <= {s2.mean}",
-        "H1": f"{s1.mean} > {s2.mean}",
+        "s1": s1,
+        "s2": s2,
+        "H0": f"μ1 - μ2 <= 0",
+        "H1": f"μ1 - μ2 > 0",
         "t_value": t_value,
         "p_value": p_value,
         "result": "reject H0" if p_value < alpha else "fail in rejecting H0",
     }
 
 
-def ttest_less(s1: SampleMean, s2: SampleMean, alpha: float = 0.05):
+def ttest_less(s1: Statistic, s2: Statistic, alpha: float = 0.05):
     """Tests the hypothesis that s1 < s2.
 
     Does a hypothesis test (t-test) with the two samples. The null hypothesis
@@ -190,9 +155,9 @@ def ttest_less(s1: SampleMean, s2: SampleMean, alpha: float = 0.05):
 
     Parameters
     ----------
-    s1 : SampleMean
+    s1 : Statistic
         First population sample mean value.
-    s2 : SampleMean
+    s2 : Statistic
         Second population sample mean value.
     alpha : float, optional
         The confidence value, by default 0.05
@@ -200,15 +165,17 @@ def ttest_less(s1: SampleMean, s2: SampleMean, alpha: float = 0.05):
     t_value, p_value = ttest(s1, s2, "less")
     return {
         "alpha": alpha,
-        "H0": f"{s1.mean} >= {s2.mean}",
-        "H1": f"{s1.mean} < {s2.mean}",
+        "s1": s1,
+        "s2": s2,
+        "H0": f"μ1 - μ2 >= 0",
+        "H1": f"μ1 - μ2 < 0",
         "t_value": t_value,
         "p_value": p_value,
         "result": "reject H0" if p_value < alpha else "fail in rejecting H0",
     }
 
 
-def ttest_equal(s1: SampleMean, s2: SampleMean, alpha: float = 0.05):
+def ttest_equal(s1: Statistic, s2: Statistic, alpha: float = 0.05):
     """Tests the hypothesis that s1 = s2.
 
     Does a hypothesis test (t-test) with the two samples. The null hypothesis
@@ -218,9 +185,9 @@ def ttest_equal(s1: SampleMean, s2: SampleMean, alpha: float = 0.05):
 
     Parameters
     ----------
-    s1 : SampleMean
+    s1 : Statistic
         First population sample mean value.
-    s2 : SampleMean
+    s2 : Statistic
         Second population sample mean value.
     alpha : float, optional
         The confidence value, by default 0.05
@@ -228,11 +195,13 @@ def ttest_equal(s1: SampleMean, s2: SampleMean, alpha: float = 0.05):
     t_value, p_value = ttest(s1, s2, "two-sided")
     return {
         "alpha": alpha,
-        "H0": f"{s1.mean} = {s2.mean}",
-        "H1": f"{s1.mean} != {s2.mean}",
+        "s1": s1,
+        "s2": s2,
+        "H0": f"μ1 - μ2 = 0",
+        "H1": f"μ1 - μ2 != 0",
         "t_value": t_value,
         "p_value": p_value,
-        "result": "reject H0" if p_value < alpha else "fail in rejecting H0",
+        "result": "reject H0" if np.abs(p_value) < alpha else "fail in rejecting H0",
     }
 
 
@@ -258,8 +227,8 @@ def compute_metrics(y_true: list[float], y_preds: list[list[float]]):
     accuracy = [accuracy_score(y_true, y_pred) for y_pred in y_preds]
 
     return {
-        "precision": SampleMean.from_observations(precision),
-        "recall": SampleMean.from_observations(recall),
-        "f_score": SampleMean.from_observations(f1),
-        "accuracy": SampleMean.from_observations(accuracy),
+        "precision": Statistic.from_observations(precision),
+        "recall": Statistic.from_observations(recall),
+        "f_score": Statistic.from_observations(f1),
+        "accuracy": Statistic.from_observations(accuracy),
     }
