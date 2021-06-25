@@ -10,6 +10,7 @@ from metrics import (
     ttest_greater,
     ttest_less,
     ttest_equal,
+    compute_raw_metrics,
     compute_metrics,
 )
 
@@ -218,6 +219,15 @@ def test_return_of_ttest_equal(snapshot):
     s2 = Statistic(30, 8, 1)
     result = jsonpickle.encode(ttest_equal(s1, s2))
     snapshot.assert_match(json.dumps(result), "ttest_equal.txt")
+
+
+def test_return_of_compute_raw_metrics(snapshot):
+    snapshot.snapshot_dir = "snapshots"
+    # Snapshot testing of the return of this function
+    s1 = [1, 2, 3, 3]
+    s2 = [[2, 3, 3, 2], [2, 2, 3, 3], [3, 3, 3, 3]]
+    result = jsonpickle.encode(compute_raw_metrics(s1, s2))
+    snapshot.assert_match(json.dumps(result), "compute_raw_metrics.txt")
 
 
 def test_return_of_compute_metrics(snapshot):

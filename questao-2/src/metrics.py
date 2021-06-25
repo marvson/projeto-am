@@ -205,13 +205,14 @@ def ttest_equal(s1: Statistic, s2: Statistic, alpha: float = 0.05):
     }
 
 
-def compute_metrics(y_true: list[float], y_preds: list[list[float]]):
+def compute_raw_metrics(y_true: list[float], y_preds: list[list[float]]):
     """Given a summary of a model's prediction, calculates some metrics.
 
     The metrics computed are f-score, accuracy, precision and recall. The number
     of false positives, true positives, and others are summed to calculate the
     micro measure of the total score for all classes (since we have a multi-label
-    classification problem).
+    classification problem). The result is the raw values of each metric, no
+    confidence intervals.
 
     Parameters
     ----------
@@ -225,7 +226,27 @@ def compute_metrics(y_true: list[float], y_preds: list[list[float]]):
     recall = [recall_score(y_true, y_pred, average="micro") for y_pred in y_preds]
     f1 = [f1_score(y_true, y_pred, average="micro") for y_pred in y_preds]
     accuracy = [accuracy_score(y_true, y_pred) for y_pred in y_preds]
+    return (precision, recall, f1, accuracy)
 
+
+def compute_metrics(y_true: list[float], y_preds: list[list[float]]):
+    """Given a summary of a model's prediction, calculates some metrics.
+
+    The metrics computed are f-score, accuracy, precision and recall. The number
+    of false positives, true positives, and others are summed to calculate the
+    micro measure of the total score for all classes (since we have a multi-label
+    classification problem). The result is the values and confidence intervals
+    for each metric computed.
+
+    Parameters
+    ----------
+    y_true : list[float]
+        The true values to be predicted.
+    y_preds : list[list[float]]
+        The predictions of the model, repeated with different partitions of the
+        dataset for statistical significance.
+    """
+    precision, recall, f1, accuracy = compute_raw_metrics(y_true, y_preds)
     return {
         "precision": Statistic.from_observations(precision),
         "recall": Statistic.from_observations(recall),
