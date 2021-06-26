@@ -205,7 +205,7 @@ def ttest_equal(s1: Statistic, s2: Statistic, alpha: float = 0.05):
     }
 
 
-def compute_raw_metrics(y_true: list[float], y_preds: list[list[float]]):
+def compute_raw_metrics(y_true: list[int], y_preds: list[list[int]]):
     """Given a summary of a model's prediction, calculates some metrics.
 
     The metrics computed are f-score, accuracy, precision and recall. The number
@@ -229,7 +229,7 @@ def compute_raw_metrics(y_true: list[float], y_preds: list[list[float]]):
     return (precision, recall, f1, accuracy)
 
 
-def compute_metrics(y_true: list[float], y_preds: list[list[float]]):
+def compute_metrics(y_true: list[int], y_preds: list[list[int]]):
     """Given a summary of a model's prediction, calculates some metrics.
 
     The metrics computed are f-score, accuracy, precision and recall. The number
