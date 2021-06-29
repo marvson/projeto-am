@@ -1,15 +1,15 @@
-from datasetAnalysis import X
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn import neighbors, datasets
 import pandas as pd
+import os.path
 
 # NUMBER OF NEIGHBORS TO USE
 n_neighbors = 7
 
 # IMPORT YEAST DATASET WITH PANDAS
-DF_PATH = "data/yeast_csv.csv"
+DF_PATH = os.path.dirname(__file__) + "/../data/yeast_csv.csv"
 df = pd.read_csv(DF_PATH, encoding="utf-8")
 
 # COMPUTE SIZE
@@ -25,7 +25,7 @@ y = np.array(df.class_protein_localization)
 
 # NUMBER OF LABELS = 10
 labels = len(set(y))
-print(labels)
+print(labels, "labels")
 
 # TRAINING DATA
 xTrain = X[200:, :n]
@@ -48,4 +48,4 @@ Z = clf.predict(xTest)
 
 # COUNTS HOW MANY PREDICTIONS HIT
 count = np.sum(yTest == Z)
-print(count / 200)
+print(count / 200, "percent of the predictions hit")
