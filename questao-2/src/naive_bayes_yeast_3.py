@@ -5,8 +5,11 @@ random.seed(42) # define the seed (important to reproduce the results)
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import os.path
 
-data = pd.read_csv('projeto_AM/yeast.data', header=(0))
+DF_PATH = os.path.dirname(__file__) + "/../data/yeast_csv.csv"
+data = pd.read_csv(DF_PATH, header=(0))
+#data = pd.read_csv('projeto_AM/yeast.data', header=(0))
 
 data = data.dropna(axis='rows') #remove NaN
 # armazena os nomes das classes
