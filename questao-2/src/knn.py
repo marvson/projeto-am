@@ -8,90 +8,143 @@ import pandas as pd
 import math
 import os.path
 
-# NUMBER OF NEIGHBORS TO USE
-n_neighbors = 10
+from sklearn.base import BaseEstimator
 
-# IMPORT YEAST DATASET WITH PANDAS
-DF_PATH = os.path.dirname(__file__) + "/../data/yeast_csv.csv"
-df = pd.read_csv(DF_PATH, encoding="utf-8")
+class knnbc(BaseEstimator):
+    """ 
+    Custom KNN based Bayesian Classifier
 
-# COMPUTE SIZE
-m = len(df)  # nr of samples=1484
-n = len(df.columns) - 1  # nr of features=8
+    """
+    def __init__(self, n_neighbors=5):
+        super(knnbc, self).__init__()           # Base class method
+        self._estimator_type = "classifier"
+        self.n_neighbors = n_neighbors
+        self._fit_X = None
+        self._y = None
+        self.priori_probs = None
+        self.n_features = None
+        self.n_samples = None        
+        self.n_labels = None
+        self.unit_sphere_vol = None
 
-# FEATURES MATRIX
-X = np.array(df.iloc[:, :n])
+    def fit(self, X, y):
+        """
+        Method for fitting knn training data
 
-# TURN LABELS INTO NUMERBS STARTING FROM 0
-df.class_protein_localization = pd.factorize(df.class_protein_localization)[0]
-y = np.array(df.class_protein_localization)
+        Parameters
+        ----------
+        X : numpy array, shape [n_samples, n_features]
 
-# NUMBER OF LABELS = 10
-labels = len(set(y))
-# print(labels, "labels")
+        y : numpy array, shape [n_samples, ]
 
-# TRAINING DATA
-xTrain = X[200:, :n]
-yTrain = y[200:]
+        """
+        # SAVE KNN DATA
+        self._fit_X = X
+        self._y = y
 
-# TESTING DATA
-xTest = X[:199, :n]
-yTest = y[:199]
+        # COMPUTE SIZE
+        self.n_samples, self.n_features = X.shape    # num_rows, num_columns
 
-# Compute prior probabilities p(Ck)
-unique, prioriProb = np.unique(yTrain, return_counts=True)
-pCk = prioriProb/len(yTrain) 
+        # NUMBER OF LABELS = 10
+        self.n_labels = len(set(y))
 
-# Compute the likelihoods for each class
-clf = neighbors.NearestNeighbors(n_neighbors=n_neighbors)
-K = n_neighbors     # Number of neighbors
-D = 8               # Number of dimensions
-# pXC = []            # Class-conditional densities: P(X|Ck)
-# pX = []             # Evidences: P(X)
-pCX = []            # Posterior probability: P(Ck|X)
-# Since D is odd, volume of unit sphere is:
-# C = pi^(D/2)/(D/2)! => C = pi^(4)/2
-C = pow(math.pi, D/2)/math.factorial(D/2)
-# Make predicitions:
-Z = []
-for Xi in xTest:
-    PXi=[]                                          # Init densities vector for Xi
-    evidence=0
-    posterior=0
-    for k in range(0, labels):                      # Run for all classes
-        XCk = []                                    # Init matrix for computing X's from each Class k
-        for j in range(0, len(yTrain)):             # Run for whole training dataset
-            if k == yTrain[j]:                      # 
-                XCk.append(xTrain[j])               # XCk <= new sample if it is labeled as Class k
-        clf.fit(XCk)                                # Fits the nearest neighbor classifier based on XCk
-        n=n_neighbors                               # n <= number of neighbors to search
-        while(True):
-            try:                                    # If Xi does not have enough neighbors of class Ck, try with less
-                R, index = clf.kneighbors([Xi],n)   # R <= distances from Xi to its k-neighbors
-                break                               # Proceed if R is sucessfully computed
-            except:
-                n=n-1                               # Reduce number of neighbors
-        Rk = max(max(R))                            # Rk <= max value between R's
-        V = C*Rk                                    # Volume for Rk
-        PXi.append(K/(len(XCk)*V))                  # Density for Xi relative to Ck
-    evidence=np.inner(PXi,pCk)                      # Compute evidence for Xi
-    # pX.append(evidence)                           # pX <= new sample of evidence P(Xi)                
-    # pXC.append(PXi)                               # pXC <= new sample of Class Conditional densities
-    posterior = PXi*pCk/evidence                    # Compute posterior probabilities for Xi
-    pCX.append(posterior)                           # pCX <= new sample of posterior probs P(Ck|Xi)
-    Z.append(argmax(posterior))                     # Z <= index of most likely label for Xi                   
-# print(Z)
+        # Compute prior probabilities p(Ck)
+        unique, prioriProb = np.unique(y, return_counts=True)
+        pCk = prioriProb/len(y)
+        self.priori_probs = pCk
 
-# TEST PREDICTION
-# clf = neighbors.KNeighborsClassifier(n_neighbors)
-# clf.fit(xTrain, yTrain)
-# Z = clf.predict(xTest)
-# Z = clf.predict_proba(xTest)
+        # Compute the likelihoods for each class
+        K = self.n_neighbors         # Number of neighbors
+        D = self.n_features     # Number of dimensions
+        # Since D is odd, volume of unit sphere is:
+        # C = pi^(D/2)/(D/2)! => C = pi^(4)/2 
+        self.unit_sphere_vol = pow(math.pi, D/2)/math.factorial(D/2)
+
+        return self
+
+    def predict(self, X):
+        """
+        Method for predicting new data using KNN bBsed Bayesian Classifier
+
+        Parameters
+        ----------
+        X : numpy array, shape [n_samples, n_features]
+        
+        """
+        clf = neighbors.NearestNeighbors(n_neighbors=self.n_neighbors)
+        yTrain = self._y
+        xTrain = self._fit_X
+        C = self.unit_sphere_vol
+        K = self.n_neighbors
+        pCX = []            # Posterior probability: P(Ck|X)
+        Z = []
+        for Xi in X:
+            PXi=[]                                          # Init densities vector for Xi
+            evidence=0
+            posterior=0
+            for k in range(0, self.n_labels):               # Run for all classes
+                XCk = []                                    # Init matrix for computing X's from each Class k
+                for j in range(0, len(yTrain)):             # Run for whole training dataset
+                    if k == yTrain[j]:                      # 
+                        XCk.append(xTrain[j])               # XCk <= new sample if it is labeled as Class k
+                clf.fit(XCk)                                # Fits the nearest neighbor classifier based on XCk
+                for N in range (K, 0, -1):
+                    try:                                    # If Xi does not have enough neighbors of class Ck, try with less
+                        R, index = clf.kneighbors([Xi],N)   # R <= distances from Xi to its k-neighbors
+                        break                               # Proceed if R is sucessfully computed
+                    except:
+                        N=N-1                               # Reduce number of neighbors
+                Rk = max(max(R))                            # Rk <= max value between R's
+                V = C*Rk                                    # Volume for Rk
+                PXi.append(K/(len(XCk)*V))                  # Density for Xi relative to Ck
+            evidence=np.inner(PXi,self.priori_probs)        # Compute evidence for Xi
+            # pX.append(evidence)                           # pX <= new sample of evidence P(Xi)                
+            # pXC.append(PXi)                               # pXC <= new sample of Class Conditional densities
+            posterior = PXi*self.priori_probs/evidence      # Compute posterior probabilities for Xi
+            pCX.append(posterior)                           # pCX <= new sample of posterior probs P(Ck|Xi)
+            Z.append(argmax(posterior))                     # Z <= index of most likely label for Xi                   
+
+        return Z
 
 
-# print(yTest)
-# print(Z)
+    def predict_proba(self, X):
+        """
+        Method for predicting new data using KNN bBsed Bayesian Classifier
 
-# COUNTS HOW MANY PREDICTIONS HIT
-count = np.sum(yTest == Z)
-print(count / 200, "percent of the predictions hit")
+        Parameters
+        ----------
+        X : numpy array, shape [n_samples, n_features]
+        
+        """
+        clf = neighbors.NearestNeighbors(n_neighbors=self.n_neighbors)
+        yTrain = self._y
+        xTrain = self._fit_X
+        C = self.unit_sphere_vol
+        K = self.n_neighbors
+        pCX = []            # Posterior probability: P(Ck|X)
+        for Xi in X:
+            PXi=[]                                          # Init densities vector for Xi
+            evidence=0
+            posterior=0
+            for k in range(0, self.n_labels):               # Run for all classes
+                XCk = []                                    # Init matrix for computing X's from each Class k
+                for j in range(0, len(yTrain)):             # Run for whole training dataset
+                    if k == yTrain[j]:                      # 
+                        XCk.append(xTrain[j])               # XCk <= new sample if it is labeled as Class k
+                clf.fit(XCk)                                # Fits the nearest neighbor classifier based on XCk
+                for N in range (K, 0, -1):
+                    try:                                    # If Xi does not have enough neighbors of class Ck, try with less
+                        R, index = clf.kneighbors([Xi],N)   # R <= distances from Xi to its k-neighbors
+                        break                               # Proceed if R is sucessfully computed
+                    except:
+                        N=N-1                               # Reduce number of neighbors
+                Rk = max(max(R))                            # Rk <= max value between R's
+                V = C*Rk                                    # Volume for Rk
+                PXi.append(K/(len(XCk)*V))                  # Density for Xi relative to Ck
+            evidence=np.inner(PXi,self.priori_probs)        # Compute evidence for Xi
+            # pX.append(evidence)                           # pX <= new sample of evidence P(Xi)                
+            # pXC.append(PXi)                               # pXC <= new sample of Class Conditional densities
+            posterior = PXi*self.priori_probs/evidence      # Compute posterior probabilities for Xi
+            pCX.append(posterior)                           # pCX <= new sample of posterior probs P(Ck|Xi)                 
+
+        return pCX
