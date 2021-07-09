@@ -36,12 +36,6 @@ yTrain = y[200:]
 xTest = X[:199, :n]
 yTest = y[:199]
 
-# make 3-class dataset for classification
-# centers = [[-5, 0], [0, 1.5], [5, -1]]
-# X, y = make_blobs(n_samples=1000, centers=centers, random_state=40)
-# transformation = [[0.4, 0.2], [-0.4, 1.2]]
-# X = np.dot(X, transformation)
-
 multi_class = 'ovr'
 
 

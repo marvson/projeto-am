@@ -2,6 +2,7 @@ from operator import pos
 import numpy as np
 import matplotlib.pyplot as plt
 from numpy.core.fromnumeric import argmax
+from metrics import accuracy_score
 import seaborn as sns
 from sklearn import neighbors, datasets
 import pandas as pd
@@ -148,3 +149,17 @@ class knnbc(BaseEstimator):
             pCX.append(posterior)                           # pCX <= new sample of posterior probs P(Ck|Xi)                 
 
         return pCX
+
+    def score(self, X, y):
+        """
+        Return the mean accuracy on the given test data and labels.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Test samples.
+        y : array-like of shape (n_samples,) or (n_samples, n_outputs)
+            True labels for `X`.
+        """
+        return accuracy_score(y, self.predict(X))
+

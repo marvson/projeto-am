@@ -5,9 +5,26 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os.path
 
-# IMPORT DATASET WITH PANDAS
-DF_PATH = os.path.dirname(__file__) + "/../data/yeast_csv.csv"
-df = pd.read_csv(DF_PATH, encoding="utf-8")
+def run(df):
+    """
+    Return dataset after one-hot ending, number of missing values and attributes correlation.
+
+    Plots:
+    Classes histogram distribution
+    Attributes density distribution
+    Attributes correlation values (pearson coefficient)
+    Attributes pair-correlation
+
+    Parameters
+        ----------
+    df : pandas dataframe
+    """
+    missing = check_missing_values(df)
+    df = check_categorical(df)
+    check_class_balance(df)
+    check_attributes_distribution(df)
+    corr = check_correlation(df)
+    return df, missing, corr
 
 def check_missing_values(df):
     df.info()
@@ -20,15 +37,16 @@ def check_categorical(df, apply_one_hot=True):
     cat = X.select_dtypes(exclude=["float", 'int'])
     if len(list(cat.columns)) == 0:
         print("The dataset has no categorical attributes")
-        return 0
+        return df
     else:
         print("Dataset categorical attributes: \n", list(cat.columns))
         if apply_one_hot == True:
             print("Applying One-Hot Encoding")
             for column in list(cat.columns):
-                df = df.join(pd.get_dummies(df[column]))
-                df = df.drop(columns=[column])  
-    print("New dataset attributes: \n ", list(df.columns))
+                X = X.join(pd.get_dummies(df[column]))
+                X = X.drop(columns=[column])
+    print("New dataset attributes: \n ", list(X.columns))
+    df = X.join(df.iloc[: ,-1:])
     return df
 
 def check_class_balance(df):
@@ -38,17 +56,17 @@ def check_class_balance(df):
 
 def check_attributes_distribution(df):
     print(df.describe())
-
     X = df.iloc[: , :-1]
     X_num = X.select_dtypes(include=["float", 'int'])
-    
     for column in list(X_num.columns):
         sns.displot(X_num, x=column, kind="kde", fill=True)
     plt.show()
 
 def check_correlation(df):
-    sns.heatmap(df.corr("pearson"))
+    corr = df.corr("pearson")
+    sns.heatmap(corr[(corr >= 0.25) | (corr <= -0.25)], 
+            cmap='viridis', vmax=1.0, vmin=-1.0, linewidths=0.1,
+            annot=True, annot_kws={"size": 8}, square=True)
     sns.pairplot(df.sample(1000), diag_kind='kde')
     plt.show()
-
-check_correlation(df)
+    return corr
