@@ -31,11 +31,21 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, train_size = p, random
 #data_analysis.run(df)
 
 # HYPERPARAMETERS TUNNING
-#n_neighbors = train_knn.run(df)
+#n_neighbors = train_knn.run(df)    # results n=9
+n_neighbors=9
 
 # CLASSIFYING:
-clf1 = GaussianNB().fit(X_train,y_train)
+clf1 = GaussianNB()
+clf2 = knnbc(n_neighbors)
+# clf3 = JANELA DE PARZEN
+clf4 = LogisticRegression(solver='sag', max_iter=100, random_state=42,
+                        multi_class='ovr')
+
 y_pred1 = []
+y_pred2 = []
+y_pred4 = []
 for i in range (4):
-    y_pred1.append(clf1.predict(X_test))
-metrics.compute_metrics(y_test,[y_pred1])
+    y_pred1.append(clf1.fit(X_train,y_train).predict(X_test))
+
+
+# COMPUTE METRICS
