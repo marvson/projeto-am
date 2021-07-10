@@ -61,6 +61,6 @@ print("5-fold scores", scores)
 probas = [c.fit(xTrain, yTrain).predict_proba(xTest) for c in (clf2, clf4)]
 Z = eclf.fit(xTrain,yTrain).predict(xTest)
 
-# Measure mean accuracy fo test data
+# Measure mean accuracy for test data
 print("Testing score : %.3f " % (eclf.score(xTest, yTest)))
 #print(Z)
