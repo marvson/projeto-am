@@ -5,7 +5,7 @@ from numpy.lib.function_base import average
 import pandas as pd
 import os.path
 
-from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import train_test_split
 from knn import knnbc
 import metrics
 
@@ -14,11 +14,15 @@ def run(df, num_folds=5, num_steps=50):
     df.class_protein_localization = pd.factorize(df.class_protein_localization)[0]
     y = np.array(df.class_protein_localization)
 
+    p = 0.8 # fracao de elementos no conjunto de treinamento
+    X_train, X_test, y_train, y_test = train_test_split(X, y, train_size = p, random_state = 42)
+
     scores = []
     k_vector = range(2,num_steps,1)
     for k in k_vector:
         clf2=knnbc(k)
-        scores.append(average(cross_val_score(clf2, X, y, cv=num_folds)))
+        clf2.fit(X_train, y_train)
+        scores.append(clf2.score(X_test, y_test))
         print(f"Average score for {k} neighbors using 5-fold cross validation: {scores[k-min(k_vector)]}")
     scores = np.array(scores)
     # PLOT K:
