@@ -32,7 +32,7 @@ x_train, x_test, y_train, y_test = train_test_split(X, y, train_size = p, random
 
 # Matriz que armazena as probabilidades para cada classe
 P = pd.DataFrame(data=np.zeros((x_test.shape[0], len(classes))), columns = classes) 
-Pc = np.zeros(len(classes)) # Armaze a fracao de elementos em cada classe
+Pc = np.zeros(len(classes)) # Armazena fracao de elementos em cada classe
 h = 2
 for i in np.arange(0, len(classes)): # Para cada classe
     elements = tuple(np.where(y_train == classes[i])) # elmentos na classe i

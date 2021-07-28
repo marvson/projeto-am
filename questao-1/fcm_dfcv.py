@@ -3,14 +3,16 @@ import math
 import random
 import logging
 
-from numpy.core.fromnumeric import transpose
+from numpy.core.fromnumeric import argmax, transpose
 from numpy.lib.function_base import diff
+from sklearn.base import BaseEstimator
+from metrics import accuracy_score
 
 
 SMALL_VALUE = 0.00001
 
 
-class FCM:
+class FCM(BaseEstimator):
     """
         This algorithm is from the paper
         "FCM: The fuzzy c-means clustering algorithm" by James Bezdek
@@ -30,8 +32,9 @@ class FCM:
     def __init__(self, n_clusters=2, m=2, max_iter=10):
         self.n_clusters = n_clusters
         self.cluster_centers_ = None
-        self.cluster_M = []
+        self.cluster_M = [] # Matrizes M
         self.u = None  # The membership matrix
+        self.J = 0
         self.m = m  # the fuzziness, m=1 is hard not fuzzy  
         self.max_iter = max_iter
         self.logger = logging.getLogger(__name__)
@@ -100,14 +103,14 @@ class FCM:
         """
         num_of_points, num_of_features = np.shape(X)
         g = self.cluster_centers_
-        J5 = 0
+        J = 0
         for i in range(self.n_clusters):
             M = self.cluster_M[i]
             for k in range(num_of_points):
                 vec = X[k]-g[i]
                 vecT = vec[...,None]
-                J5+=(self.u[i][k] ** self.m)*np.matmul(np.matmul(vec,M),vecT)
-        return J5
+                J+=(self.u[i][k] ** self.m)*np.matmul(np.matmul(vec,M),vecT)
+        return J
 
     # INVERSE MATRIX CAUSES FUNCTION TO FAIL
     def compute_cluster_weights(self, X, cluster_index):
@@ -219,50 +222,73 @@ class FCM:
         :param X:
         :param y: list of clusters or a membership, now only support the hard y list which will generate
         the membership
-        :param hard: whether y contains a list of clusters or a membership matrix
         :return: self
         """
         X = np.array(X)
         num_of_points, num_of_features = np.shape(X)
-        if y is not None:
-            y = np.array(y)
-        if self.cluster_centers_ is None:
-            do_compute_cluster_centers = True
-        else:
-            do_compute_cluster_centers = False
-        if self.u is None:
-            self.init_membership_random(num_of_points)
+        
+        self.init_membership_random(num_of_points)
+        J_old = 0
 
         # START FITTING CENTROIDS
         for i in range(self.max_iter):
             # FIRST STAGE: UPDATE PROTOTYPES
-            if do_compute_cluster_centers:
-                centers = self.update_cluster_centers(X)
+            centers = self.update_cluster_centers(X)
+
             # SECOND STAGE: UPDATE CLUSTERING MATRICES
             self.update_cluster_lambdas(X)
+
             # THIRD STAGE: ALLOCATE MEMBERSHIP DEGREES
             self.update_membership(X)
-            #self.logger.info("updated membership is: ")
-            #self.logger.info(self.u)
-            self.logger.info("membership succesfully updated")
-            J = self.compute_objective_function(X)
-            self.logger.info("updated objective function value is: ")
-            self.logger.info(J)
-        #print(self.cluster_M)    
+            #self.logger.info("membership succesfully updated")
+
+            # COMPUTE OBJECTIVE
+            self.J = self.compute_objective_function(X)
+            #self.logger.info("updated objective function value is: ")
+            #self.logger.info(self.J)
+            if abs(self.J-J_old) < SMALL_VALUE:
+                break
+            else:
+                J_old = self.J
+        #diagonal_prod = [np.product(np.diag(self.cluster_M[i])) for i in range (self.n_clusters)]
+        #print(diagonal_prod)
         return self
 
-    def predict(self, X):
-        if self.u is None:
-            u = None
-        else:
-            u = self.u.copy()
-        self.u = np.zeros((self.n_clusters, X.shape[0]))
-        self.update_membership(X)
-        predicted_u = self.u.copy()
-        if np.any(np.isnan(predicted_u)):
+    def predict_proba(self, X):
+        num_of_points, num_of_features = np.shape(X)
+        u = np.zeros((self.n_clusters, num_of_points))
+        u = self.compute_data_membership(X)
+        #predicted_u = self.u.copy()
+        if np.any(np.isnan(u)):
             self.logger.debug("predict> has a nan")
             self.logger.debug("u:")
             self.logger.debug(u)
             raise Exception("There is a nan in predict method")
-        self.u = u
-        return predicted_u
+        return u
+
+    def predict(self, X):
+        num_of_points, num_of_features = np.shape(X)
+        u = np.zeros((self.n_clusters, num_of_points))
+        u = self.compute_data_membership(X)
+        #predicted_u = self.u.copy()
+        if np.any(np.isnan(u)):
+            self.logger.debug("predict> has a nan")
+            self.logger.debug("u:")
+            self.logger.debug(u)
+            raise Exception("There is a nan in predict method")
+        predict_u = argmax(u, axis=0)
+        return predict_u
+
+
+    def score(self, X, y):
+        """
+        Return the mean accuracy on the given test data and labels.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Test samples.
+        y : array-like of shape (n_samples,) or (n_samples, n_outputs)
+            True labels for `X`.
+        """
+        return accuracy_score(y, self.predict(X))

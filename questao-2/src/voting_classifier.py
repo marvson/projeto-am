@@ -44,9 +44,7 @@ yTrain = y[200:]
 xTest = X[:199, :n]
 yTest = y[:199]
 
-# clf1 = NAIVE BAYES
 clf2 = knnbc(n_neighbors)
-# clf3 = JANELA DE PARZEN
 clf4 = LogisticRegression(solver='sag', max_iter=100, random_state=42,
                         multi_class='ovr')
 
@@ -54,12 +52,13 @@ eclf = VotingClassifier(estimators=[('rf', clf2), ('gnb', clf4)],
                         voting='soft',
                         weights=[5, 1])
 
-scores = cross_val_score(clf2, X, y, cv=5)
-print("5-fold scores", scores)
 
 # predict class probabilities for all classifiers
 probas = [c.fit(xTrain, yTrain).predict_proba(xTest) for c in (clf2, clf4)]
 Z = eclf.fit(xTrain,yTrain).predict(xTest)
+
+scores = cross_val_score(clf2, X, y, cv=5)
+print("5-fold scores", scores)
 
 # Measure mean accuracy for test data
 print("Testing score : %.3f " % (eclf.score(xTest, yTest)))

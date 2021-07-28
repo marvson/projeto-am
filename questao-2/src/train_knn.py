@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from knn import knnbc
 import metrics
 
-def run(df, num_folds=5, num_steps=50):
+def run(df, num_steps=50):
     X = np.array(df.iloc[:, :-1])
     df.class_protein_localization = pd.factorize(df.class_protein_localization)[0]
     y = np.array(df.class_protein_localization)
