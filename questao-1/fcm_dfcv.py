@@ -111,23 +111,6 @@ class FCM(BaseEstimator):
                 vecT = vec[...,None]
                 J+=(self.u[i][k] ** self.m)*np.matmul(np.matmul(vec,M),vecT)
         return J
-
-    # INVERSE MATRIX CAUSES FUNCTION TO FAIL
-    def compute_cluster_weights(self, X, cluster_index):
-        num_of_points, num_of_features = np.shape(X)
-        g = self.cluster_centers_
-        i = cluster_index
-        sum = np.zeros((num_of_features,num_of_features))
-        for k in range(num_of_points):
-            vec = X[k]-g[i]
-            #print("cluster weights 2\n", (self.u[cluster_index][k] ** self.m)*np.outer(vec,vec))
-            sum += (self.u[i][k] ** self.m)*np.outer(vec,vec)
-        C = np.diag(np.diag(sum))
-        det = np.linalg.det(C)
-        invC = np.linalg.inv(C)
-        M = det**(1/num_of_features)*invC
-        #print(M)
-        return M
     
     def compute_cluster_lambda(self, X, cluster_index):
         num_of_points, num_of_features = np.shape(X)
@@ -152,8 +135,10 @@ class FCM(BaseEstimator):
         return M
     
     def update_cluster_lambdas(self, X):
+        M = []
         for i in range(self.n_clusters):
-            self.cluster_M.append(self.compute_cluster_lambda(X, i))
+            M.append(self.compute_cluster_lambda(X, i))
+        return M
 
     def compute_membership_single(self, X, cluster_index, datapoint_index):
         """
@@ -236,7 +221,7 @@ class FCM(BaseEstimator):
             centers = self.update_cluster_centers(X)
 
             # SECOND STAGE: UPDATE CLUSTERING MATRICES
-            self.update_cluster_lambdas(X)
+            self.cluster_M = self.update_cluster_lambdas(X)
 
             # THIRD STAGE: ALLOCATE MEMBERSHIP DEGREES
             self.update_membership(X)
