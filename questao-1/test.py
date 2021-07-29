@@ -53,11 +53,7 @@ def yeast_example():
     return fcm.J
 
 J = []
-<<<<<<< HEAD
-for i in range(10):
-=======
 for i in range(30):
->>>>>>> development
     J.append(yeast_example())
     print(f"partition #{i+1} objective function value: {J[i]}")
 print(min(J))
