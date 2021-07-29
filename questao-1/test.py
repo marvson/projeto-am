@@ -55,7 +55,7 @@ def yeast_example():
     return fcm.J
 
 J = []
-for i in range(1):
+for i in range(100):
     J.append(yeast_example())
     print(f"partition #{i+1} objective function value: {J[i]}")
 print(min(J))

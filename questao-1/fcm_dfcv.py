@@ -10,25 +10,7 @@ from metrics import accuracy_score
 
 
 SMALL_VALUE = 0.00001
-
-
 class FCM(BaseEstimator):
-    """
-        This algorithm is from the paper
-        "FCM: The fuzzy c-means clustering algorithm" by James Bezdek
-        Here we will use the Euclidean distance
-
-        Pseudo code:
-        1) Fix c, m, A
-        c: n_clusters
-        m: 2 by default
-        A: we are using Euclidean distance, so we don't need it actually
-        2) compute the means (cluster centers)
-        3) update the membership matrix
-        4) compare the new membership with the old one, is difference is less than a threshold, stop. otherwise
-            return to step 2)
-    """
-
     def __init__(self, n_clusters=2, m=2, max_iter=10):
         self.n_clusters = n_clusters    # Number of clusters
         self.G = None                   # cluster centers
@@ -39,10 +21,6 @@ class FCM(BaseEstimator):
         self.max_iter = max_iter
 
     def init_membership_random(self, X):
-        """
-        :param num_of_points:
-        :return: u
-        """
         num_of_points, num_of_features = np.shape(X)
         u = np.zeros((self.n_clusters, num_of_points))
         for k in range(num_of_points):
@@ -60,11 +38,6 @@ class FCM(BaseEstimator):
         return u
         
     def update_prototypes(self, X):
-        """
-        :param X:
-        :return: cluster centers
-        g[i] = SUM(u[i][k]^m*x[k])/SUM(u[i][k]^m)
-        """
         num_of_points, num_of_features = np.shape(X)
         c = self.n_clusters
         g = np.zeros((c,num_of_features))
@@ -75,7 +48,6 @@ class FCM(BaseEstimator):
                 num += (self.u[i][k] ** self.m)*X[k]
                 den += (self.u[i][k] ** self.m)
             if den==0:
-                print("1) den=0")
                 den=SMALL_VALUE            
             g[i]=num/den
         return g
@@ -97,7 +69,6 @@ class FCM(BaseEstimator):
             num = num*sum
         num = num**(1/p)
         if den==0:
-            print("2) den=0")
             den=SMALL_VALUE
         _lambda = num/den
         return _lambda
@@ -113,32 +84,36 @@ class FCM(BaseEstimator):
                 M[i][j] = self.compute_single_lambda(X,i,j)
         return M
     
-    def update_u(self, X):
+    def compute_single_u(self,X,cluster_index,datapoint_index):
         n, p = np.shape(X)
+        i, k = cluster_index, datapoint_index
         c = self.n_clusters
         g = self.G
         M = self.M
+        inv_sum = 0
+        for h in range(c):
+            # NUMERADOR
+            v1 = X[k] - g[i]
+            num = np.inner((v1*M[i]),v1)
+            # DENOMINADOR
+            v2 = X[k] - g[h]
+            den = np.inner((v2*M[h]),v2)
+            if den==0:
+                den=SMALL_VALUE
+            inv_sum += (num/den)**(1/(self.m-1))
+        if inv_sum==0:
+            sum = 1.0 - SMALL_VALUE
+        else:
+            sum = 1/inv_sum
+        return sum
+
+    def update_u(self, X):
+        n, p = np.shape(X)
+        c = self.n_clusters
         u = np.zeros((c,n))
         for i in range(c):
             for k in range(n):
-                for h in range(c):
-                    sum = 0
-                    # NUMERADOR
-                    v1 = X[k] - g[i]
-                    num = np.inner((v1*M[i]),v1)
-                    # DENOMINADOR
-                    v2 = X[k] - g[h]
-                    den = np.inner((v2*M[h]),v2)
-                    print(M[h])
-                    print(v2)
-                    if den==0:
-                        print("3) den=0")
-                        den=SMALL_VALUE
-                    sum += (num/den)**(1/(self.m-1))
-                if sum==0:
-                    print("4) den=0")
-                    sum=SMALL_VALUE
-                u[i][k] = 1/sum
+                u[i][k] = self.compute_single_u(X,i,k)
         return u
     
     def update_J(self, X):
