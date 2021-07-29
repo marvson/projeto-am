@@ -50,13 +50,12 @@ def yeast_example():
     X_train, X_test, y_train, y_test = train_test_split(X, y, train_size = p, random_state = 42)
 
     fcm = FCM(n_clusters=10, max_iter=150, m=2)
-    fcm.set_logger(tostdout=True, level=logging.DEBUG)
     fcm.fit(X_train, y_train)
     print(fcm.J)
     return fcm.J
 
 J = []
-for i in range(100):
+for i in range(1):
     J.append(yeast_example())
     print(f"partition #{i+1} objective function value: {J[i]}")
 print(min(J))
