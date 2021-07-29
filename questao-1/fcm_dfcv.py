@@ -138,7 +138,7 @@ class FCM(BaseEstimator):
             self.M = self.update_M(X)
             self.u = self.update_u(X)
             self.J = self.update_J(X)
-            print("J updated:\n",self.J)
+            #print("J updated:\n",self.J)
 
             if abs(self.J-J_old) < SMALL_VALUE:
                 break
@@ -146,3 +146,14 @@ class FCM(BaseEstimator):
                 J_old = self.J
         return self
 
+    def predict_proba(self, X):
+        u = self.update_u(X)
+        return u
+    
+    def predict(self, X):
+        u = self.update_u(X)
+        predict_u = argmax(u, axis=0)
+        return predict_u
+    
+    def score(self, X, y):
+        return accuracy_score(y, self.predict(X))
