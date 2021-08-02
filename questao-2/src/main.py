@@ -13,8 +13,8 @@ from sklearn.ensemble import VotingClassifier
 from knn import knnbc
 import data_analysis
 import train_knn
-import metrics
-import comparison
+
+
 
 # IMPORT DATASET WITH PANDAS
 DF_PATH = os.path.dirname(__file__) + "/../data/yeast_csv.csv"
@@ -22,11 +22,11 @@ df = pd.read_csv(DF_PATH, encoding="utf-8")
 
 X = np.array(df.iloc[:, :-1])
 # TURN LABELS INTO NUMERBS STARTING FROM 0
-df.class_protein_localization = pd.factorize(df.class_protein_localization)[0]
-y = np.array(df.class_protein_localization)
+# df.class_protein_localization = pd.factorize(df.class_protein_localization)[0]
+y = np.array(pd.factorize(df.class_protein_localization)[0])
 
 # DATA EXPLORATORY ANALYSIS AND PREPROCESSING
-#data_analysis.run(df)
+data_analysis.run(df)
 
 # SPLITS DATA INTO TRAIN AND VALIDATION SETS
 p = 0.8 # fracao de elementos no conjunto de treinamento
@@ -43,21 +43,4 @@ clf2 = knnbc(n_neighbors)
 clf4 = LogisticRegression(solver='sag', max_iter=100, random_state=42,
                         multi_class='ovr')
 
-y_pred1 = []
-y_pred2 = []
-y_pred4 = []
-    
-# MAKE STRATIFIED K-FOLDS
-n_folds = 5
-skf = StratifiedKFold(n_splits=n_folds)
-for train_index, test_index in skf.split(X, y):
-    #print("TRAIN:", train_index, "TEST:", test_index)
-    X_train, X_test = X[train_index], X[test_index]
-    y_train, y_test = y[train_index], y[test_index]
-    clf2.fit(X_train,y_train)
-    y_pred2.append(clf2.predict(X_test))
 
-
-    
-
-# COMPUTE METRICS
