@@ -9,7 +9,7 @@ from sklearn.base import BaseEstimator
 from metrics import accuracy_score
 
 
-SMALL_VALUE = 0.00001
+SMALL_VALUE = 10**(-6)
 class FCM(BaseEstimator):
     def __init__(self, n_clusters=2, m=2, max_iter=10):
         self.n_clusters = n_clusters    # Number of clusters
@@ -31,7 +31,7 @@ class FCM(BaseEstimator):
                 else:
                     rand_clus = random.randint(0, self.n_clusters-1)
                     rand_num = random.random()
-                    rand_num = round(rand_num, 2)
+                    rand_num = round(rand_num, 1)
                     if rand_num + row_sum <= 1.0:  # to prevent membership sum for a point to be larger than 1.0
                         u[i][k] = rand_num
                         row_sum += u[i][k]
@@ -61,16 +61,25 @@ class FCM(BaseEstimator):
         num=1
         den=0
         for k in range(n):
-            den += (self.u[i][k]**self.m)*(X[k][j]-g[i][j])**2
+            den += (self.u[i][k]**self.m)*((X[k][j]-g[i][j])**2)
+        if den==0:
+            den=SMALL_VALUE
+        
         for h in range(p):
             sum=0
             for k in range(n):
-                sum += (self.u[i][k]**self.m)*(X[k][h]-g[i][h])**2
+                sum += (self.u[i][k]**self.m)*((X[k][h]-g[i][h])**2)
+            if sum==0:
+                num=SMALL_VALUE
+                break
             num = num*sum
         num = num**(1/p)
-        if den==0:
-            den=SMALL_VALUE
+        if num == 0:
+            num=SMALL_VALUE
+
         _lambda = num/den
+        if _lambda==0:
+            _lambda=SMALL_VALUE
         return _lambda
     
     def update_M(self, X):
@@ -84,6 +93,11 @@ class FCM(BaseEstimator):
                 M[i][j] = self.compute_single_lambda(X,i,j)
         return M
     
+    def compute_d2(self, x, g, _lambda):
+        d2 = sum(_lambda*((x-g)**2))
+        if d2==0: d2=SMALL_VALUE
+        return d2
+
     def compute_single_u(self,X,cluster_index,datapoint_index):
         n, p = np.shape(X)
         i, k = cluster_index, datapoint_index
@@ -93,19 +107,19 @@ class FCM(BaseEstimator):
         inv_sum = 0
         for h in range(c):
             # NUMERADOR
-            v1 = X[k] - g[i]
-            num = np.inner((v1*M[i]),v1)
+            num = self.compute_d2(X[k],g[i],M[i])
+            num = num**(1/(self.m-1))
             # DENOMINADOR
-            v2 = X[k] - g[h]
-            den = np.inner((v2*M[h]),v2)
-            if den==0:
-                den=SMALL_VALUE
-            inv_sum += (num/den)**(1/(self.m-1))
+            den = self.compute_d2(X[k],g[h],M[h])
+            den = den**(1/(1-self.m))
+            inv_sum += num*den
         if inv_sum==0:
-            sum = 1.0 - SMALL_VALUE
+            u = 1-SMALL_VALUE
         else:
-            sum = 1/inv_sum
-        return sum
+            u = 1/inv_sum
+        if u==0:
+            u = SMALL_VALUE
+        return u
 
     def update_u(self, X):
         n, p = np.shape(X)
@@ -124,8 +138,9 @@ class FCM(BaseEstimator):
         J = 0
         for k in range(n):
             for i in range(c):
-                v1 = X[k] - g[i]
-                J += (self.u[i][k]**self.m)*np.inner((v1*M[i]),v1)
+                #v1 = X[k] - g[i]
+                #J += (self.u[i][k]**self.m)*np.inner((v1*M[i]),v1)
+                J += (self.u[i][k]**self.m)*self.compute_d2(X[k],g[i],M[i])
         return J
 
     def fit(self, X, y=None):
@@ -157,3 +172,4 @@ class FCM(BaseEstimator):
     
     def score(self, X, y):
         return accuracy_score(y, self.predict(X))
+    
