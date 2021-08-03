@@ -16,9 +16,10 @@ def import_yeast():
     X = np.array(df.iloc[:,:-1])
 
     # TURN LABELS INTO NUMERBS STARTING FROM 0
-    df.class_protein_localization = pd.factorize(df.class_protein_localization)[0]
-    y = np.array(df.iloc[:,-1:])
-    return X, y
+    labels = pd.factorize(df.class_protein_localization)[0]
+    y = np.array(labels)
+
+    return X, y, labels
 
 def get_partition(X, y, n_clusters=10, max_iter=150, m=2, n_iter=100):
     clf = FCM(n_clusters=n_clusters, max_iter=max_iter, m=m)
@@ -31,7 +32,7 @@ def get_partition(X, y, n_clusters=10, max_iter=150, m=2, n_iter=100):
             if i>0: print(f"{clf.J} < {J_old}")
             G, U, J = clf.G, clf.u, clf.J
             J_old = J
-        print(f"finished partition #{i+1}")
+        #print(f"finished partition #{i+1}")
     return G, U, J, Js
 
 def compute_PC(u):
@@ -45,7 +46,7 @@ def compute_PC(u):
 def compute_MPC(u):
     c, n = np.shape(u)
     PC = compute_PC(u)
-    print(f"PC: {PC}")
+    #print(f"PC: {PC}")
     MPC = 1-(c/(c-1))*(1-PC)
     return MPC
     
@@ -55,7 +56,7 @@ def compute_CE(u):
     for i in range(c):
         for k in range(n):
             log_u = np.log(u[i][k])
-            CE -= u[i][k]*log_u/n
+            CE -= u[i][k]*(log_u)/n
     return CE
 
 def get_crisp(u):
@@ -66,23 +67,28 @@ def get_crisp(u):
         #print(u[:,k])
         predict_u = np.argmax(u[:,k])
         crisp_u[predict_u][k] = 1
-    return crisp_u
+    return crisp_u, np.argmax(u, axis=0)
 
-def run(X,y):
+def accuracy(contingency):
+    return sum(np.max(contingency,axis=0))/np.sum(contingency)
+
+def run(X,y,labels):
     m = [1.1, 1.6, 2.0]
     for i in m:
         G, U, J, Js = get_partition(X, y, n_clusters=10, max_iter=150, m=i, n_iter=100)
         MPC, CE = compute_MPC(U), compute_CE(U)
-        crisp_u = get_crisp(U)
-        contingency = cluster.contingency_matrix(y, crisp_u)
-        RS = cluster.adjusted_rand_score(y, crisp_u)
-        F1 = metrics.f1_score(y,crisp_u)
-        print(f"J: {J}, MPC: {MPC}, CE: {CE}")
-        print(f"RS: {RS}, F-Score: {F1}")
-        print(G)
+        crisp_u, predict_u = get_crisp(U)
+        contingency = cluster.contingency_matrix(labels, predict_u)
+        RS = cluster.adjusted_rand_score(labels, predict_u)
+        F1 = metrics.f1_score(labels, predict_u, average='weighted', zero_division=0)
+        OERC = 1-accuracy(contingency)
+        with open(os.path.dirname(__file__) + "/output.txt", "a") as text_file:
+            print(f"Para m={i}", file=text_file)
+            print(f"Matriz de Prototipos:\n{G}", file=text_file)
+            print(f"Matriz de Confusao:\n{contingency}", file=text_file)
+            print(f"J: {J}, MPC: {MPC}, CE: {CE}", file=text_file)
+            print(f"RS: {RS}, F-Score: {F1}, OERC:{OERC}", file=text_file)      
 
-X, y = import_yeast()
-run(X,y)
+X, y, labels = import_yeast()
+run(X,y,labels)
 
-
-  
