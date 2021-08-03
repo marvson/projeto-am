@@ -9,7 +9,7 @@ from fcm_dfcv import FCM
 
 def import_yeast():
     # IMPORT DATASET
-    DF_PATH = os.path.dirname(__file__) + "/../questao-2/data/yeast_csv.csv"
+    DF_PATH = os.path.dirname(__file__) + "/../data/yeast_csv.csv"
     df = pd.read_csv(DF_PATH, encoding="utf-8")
 
     # FEATURES MATRIX

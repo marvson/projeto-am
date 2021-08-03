@@ -50,7 +50,7 @@ class FCM(BaseEstimator):
                 num += (self.u[i][k] ** self.m)*X[k]
                 den += (self.u[i][k] ** self.m)
             if den==0:
-                g[i] = self.G            
+                g[i] = self.G[i]            
             else: g[i]=num/den
         return g
     
@@ -175,11 +175,12 @@ class FCM(BaseEstimator):
     def fit(self, X, y=None):
         
         self.u = self.init_membership_random(X)
+
         self.G = self.update_prototypes(X)
         self.M = self.init_M(X)
         self.u = self.update_u(X)
         self.J = self.update_J(X)
-        J_old = np.inf
+        J_old = self.J
 
         for i in range(self.max_iter):
             self.G = self.update_prototypes(X)
