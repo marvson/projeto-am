@@ -87,7 +87,8 @@ def run(X,y,labels):
             print(f"Matriz de Prototipos:\n{G}", file=text_file)
             print(f"Matriz de Confusao:\n{contingency}", file=text_file)
             print(f"J: {J}, MPC: {MPC}, CE: {CE}", file=text_file)
-            print(f"RS: {RS}, F-Score: {F1}, OERC:{OERC}", file=text_file)      
+            print(f"RS: {RS}, F-Score: {F1}, OERC:{OERC}", file=text_file)
+            print(f"{Counter(np.argmax(U,axis=0))}", file=text_file)   
 
 X, y, labels = import_yeast()
 run(X,y,labels)
